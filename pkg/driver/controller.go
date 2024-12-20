@@ -502,6 +502,18 @@ func (cs *controller) DeleteVolume(
 	unlock := cs.volumeLock.LockVolume(volumeID)
 	defer unlock()
 
+	// Fetch the list of snapshot for the given volume
+	snapList, err := zfs.GetSnapshotForVolume(volumeID)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			"failed to handle delete volume request for {%s}, "+
+				"validation failed checking for snapshots. Error: %s",
+			req.VolumeId,
+			err.Error(),
+		)
+	}
+
 	// verify if the volume has already been deleted
 	vol, err := zfs.GetVolume(volumeID)
 	if vol != nil && vol.DeletionTimestamp != nil {
@@ -524,14 +536,17 @@ func (cs *controller) DeleteVolume(
 		return nil, status.Error(codes.Internal, "can not delete, volume creation is in progress")
 	}
 
-	// Delete the corresponding ZV CR
-	err = zfs.DeleteVolume(volumeID)
-	if err != nil {
-		return nil, errors.Wrapf(
-			err,
-			"failed to handle delete volume request for {%s}",
-			volumeID,
-		)
+	// Delete the corresponding ZV CR only if there are no snapshots present for the volume
+
+	if len(snapList.Items) == 0 {
+		err = zfs.DeleteVolume(volumeID)
+		if err != nil {
+			return nil, errors.Wrapf(
+				err,
+				"failed to handle delete volume request for {%s}",
+				volumeID,
+			)
+		}
 	}
 
 	sendEventOrIgnore("", volumeID, vol.Spec.Capacity, analytics.VolumeDeprovision)

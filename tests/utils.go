@@ -18,9 +18,10 @@ package tests
 
 import (
 	"fmt"
-	"k8s.io/klog/v2"
 	"os/exec"
 	"time"
+
+	"k8s.io/klog/v2"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -349,11 +350,11 @@ func deleteStorageClass() {
 		"while deleting zfs storageclass {%s}", scObj.Name)
 }
 
-func createAndVerifyPVC() {
+func createAndVerifyPVC(pvcName string) {
 	var (
-		err     error
-		pvcName = "zfspv-pvc"
+		err error
 	)
+
 	ginkgo.By("building a pvc")
 	pvcObj, err = pvc.NewBuilder().
 		WithName(pvcName).
@@ -361,6 +362,12 @@ func createAndVerifyPVC() {
 		WithStorageClass(scObj.Name).
 		WithAccessModes(accessModes).
 		WithCapacity(capacity).Build()
+
+	if pvcName == "zfspv-pvc-block" {
+		volmode := corev1.PersistentVolumeBlock
+		pvcObj.Spec.VolumeMode = &volmode
+	}
+
 	gomega.Expect(err).ShouldNot(
 		gomega.HaveOccurred(),
 		"while building pvc {%s} in namespace {%s}",
@@ -392,57 +399,9 @@ func createAndVerifyPVC() {
 	)
 }
 
-func createAndVerifyBlockPVC() {
+func resizeAndVerifyPVC(pvcName string) {
 	var (
-		err     error
-		pvcName = "zfspv-pvc"
-	)
-
-	volmode := corev1.PersistentVolumeBlock
-
-	ginkgo.By("building a pvc")
-	pvcObj, err = pvc.NewBuilder().
-		WithName(pvcName).
-		WithNamespace(OpenEBSNamespace).
-		WithStorageClass(scObj.Name).
-		WithAccessModes(accessModes).
-		WithVolumeMode(&volmode).
-		WithCapacity(capacity).Build()
-	gomega.Expect(err).ShouldNot(
-		gomega.HaveOccurred(),
-		"while building pvc {%s} in namespace {%s}",
-		pvcName,
-		OpenEBSNamespace,
-	)
-
-	ginkgo.By("creating above pvc")
-	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Create(pvcObj)
-	gomega.Expect(err).To(
-		gomega.BeNil(),
-		"while creating pvc {%s} in namespace {%s}",
-		pvcName,
-		OpenEBSNamespace,
-	)
-
-	ginkgo.By("verifying pvc status as bound")
-
-	status := IsPVCBoundEventually(pvcName)
-	gomega.Expect(status).To(gomega.Equal(true),
-		"while checking status equal to bound")
-
-	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcObj.Name, metav1.GetOptions{})
-	gomega.Expect(err).To(
-		gomega.BeNil(),
-		"while retrieving pvc {%s} in namespace {%s}",
-		pvcName,
-		OpenEBSNamespace,
-	)
-}
-
-func resizeAndVerifyPVC() {
-	var (
-		err     error
-		pvcName = "zfspv-pvc"
+		err error
 	)
 	ginkgo.By("updating the pvc with new size")
 	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcObj.Name, metav1.GetOptions{})
@@ -476,25 +435,30 @@ func resizeAndVerifyPVC() {
 		OpenEBSNamespace,
 	)
 }
-func createDeployVerifyApp() {
+func createDeployVerifyApp(appName, pvcName string) {
 	ginkgo.By("creating and deploying app pod")
-	createAndDeployAppPod(appName)
+	if pvcName == "zfspv-pvc-block" || pvcName == "pvc-name-for-del-test" {
+		createAndDeployBlockAppPod(appName, pvcName)
+	} else {
+		createAndDeployAppPod(appName, pvcName)
+	}
+
 	time.Sleep(30 * time.Second)
 	ginkgo.By("verifying app pod is running", verifyAppPodRunning)
 }
 
-func createDeployVerifyCloneApp() {
+func createDeployVerifyCloneApp(cloneAppName, clonePvcName string) {
 	ginkgo.By("creating and deploying app pod")
-	createAndDeployAppPod(cloneAppName)
-	time.Sleep(30 * time.Second)
+	createAndDeployAppPod(cloneAppName, clonePvcName)
+	time.Sleep(60 * time.Second)
 	ginkgo.By("verifying app pod is running", verifyAppPodRunning)
 }
 
-func createAndDeployAppPod(appname string) {
+func createAndDeployAppPod(appName, pvcName string) {
 	var err error
 	ginkgo.By("building a busybox app pod deployment using above zfs volume")
 	deployObj, err = deploy.NewBuilder().
-		WithName(appname).
+		WithName(appName).
 		WithNamespace(OpenEBSNamespace).
 		WithLabelsNew(
 			map[string]string{
@@ -537,7 +501,7 @@ func createAndDeployAppPod(appname string) {
 				WithVolumeBuilders(
 					k8svolume.NewBuilder().
 						WithName("datavol1").
-						WithPVCSource(pvcObj.Name),
+						WithPVCSource(pvcName),
 				),
 		).
 		Build()
@@ -553,7 +517,7 @@ func createAndDeployAppPod(appname string) {
 	)
 }
 
-func createAndDeployBlockAppPod() {
+func createAndDeployBlockAppPod(appName, pvcName string) {
 	var err error
 	ginkgo.By("building a busybox app pod deployment using above zfs volume")
 	deployObj, err = deploy.NewBuilder().
@@ -600,7 +564,7 @@ func createAndDeployBlockAppPod() {
 				WithVolumeBuilders(
 					k8svolume.NewBuilder().
 						WithName("datavol1").
-						WithPVCSource(pvcObj.Name),
+						WithPVCSource(pvcName),
 				),
 		).
 		Build()
@@ -614,12 +578,6 @@ func createAndDeployBlockAppPod() {
 		appName,
 		OpenEBSNamespace,
 	)
-}
-
-func createDeployVerifyBlockApp() {
-	ginkgo.By("creating and deploying app pod", createAndDeployBlockAppPod)
-	time.Sleep(30 * time.Second)
-	ginkgo.By("verifying app pod is running", verifyAppPodRunning)
 }
 
 func verifyAppPodRunning() {

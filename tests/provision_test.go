@@ -24,6 +24,7 @@ var _ = Describe("[zfspv] TEST VOLUME PROVISIONING", func() {
 	Context("App is deployed with zfs driver", func() {
 		It("Running zfs volume Creation Test", volumeCreationTest)
 		It("Running zfs volume Creation Test with custom node id", Label("custom-node-id"), volumeCreationTest)
+		It("Running zfs volume Deletion Test", volumeDeletionTest)
 	})
 })
 
@@ -41,7 +42,7 @@ func exhaustiveVolumeTests(parameters map[string]string) {
 	snapshotAndCloneCreate()
 	// btrfs does not support online resize
 	if fstype != "btrfs" {
-		By("Resizing the PVC", resizeAndVerifyPVC)
+		By("Resizing the PVC", func() { resizeAndVerifyPVC(pvcNameFS) })
 	}
 	snapshotAndCloneCleanUp()
 	cleanUp()
@@ -51,8 +52,8 @@ func exhaustiveVolumeTests(parameters map[string]string) {
 func create(parameters map[string]string) {
 	By("####### Creating the storage class : " + parameters["fstype"] + " #######")
 	createFstypeStorageClass(parameters)
-	By("creating and verifying PVC bound status", createAndVerifyPVC)
-	By("Creating and deploying app pod", createDeployVerifyApp)
+	By("creating and verifying PVC bound status", func() { createAndVerifyPVC(pvcNameFS) })
+	By("Creating and deploying app pod", func() { createDeployVerifyApp(appNameFS, pvcNameFS) })
 	By("verifying ZFSVolume object", VerifyZFSVolume)
 	By("verifying storage class parameters")
 	VerifyStorageClassParams(parameters)
@@ -60,48 +61,78 @@ func create(parameters map[string]string) {
 
 // Creates the snapshot/clone resources
 func snapshotAndCloneCreate() {
-	createSnapshot(pvcName, snapName)
-	verifySnapshotCreated(snapName)
-	createClone(clonePvcName, snapName, scObj.Name)
-	By("Creating and deploying clone app pod", createDeployVerifyCloneApp)
+	createSnapshot(pvcNameFS, snapNameFS)
+	verifySnapshotCreated(snapNameFS)
+	createClone(clonePvcNameFS, snapNameFS, scObj.Name)
+	By("Creating and deploying clone app pod", func() { createDeployVerifyCloneApp(cloneAppNameFS, clonePvcNameFS) })
 }
 
 // Removes the snapshot/clone resources
 func snapshotAndCloneCleanUp() {
-	deleteAppDeployment(cloneAppName)
-	deletePVC(clonePvcName)
-	deleteSnapshot(pvcName, snapName)
+	deleteAppDeployment(cloneAppNameFS)
+	deletePVC(clonePvcNameFS)
+	deleteSnapshot(pvcNameFS, snapNameFS)
 }
 
 // Removes the resources
 func cleanUp() {
-	deleteAppDeployment(appName)
-	deletePVC(pvcName)
+	deleteAppDeployment(appNameFS)
+	deletePVC(pvcNameFS)
 	By("Deleting storage class", deleteStorageClass)
 }
 
 func blockVolCreationTest() {
 	By("Creating default storage class", createStorageClass)
-	By("creating and verifying PVC bound status", createAndVerifyBlockPVC)
+	By("creating and verifying PVC bound status", func() { createAndVerifyPVC(pvcNameBlock) })
 
-	By("Creating and deploying app pod", createDeployVerifyBlockApp)
+	By("Creating and deploying app pod", func() { createDeployVerifyApp(appNameBlock, pvcNameBlock) })
 	By("verifying ZFSVolume object", VerifyZFSVolume)
 	By("verifying ZFSVolume property change", VerifyZFSVolumePropEdit)
-	By("Deleting application deployment")
 
-	createSnapshot(pvcName, snapName)
-	verifySnapshotCreated(snapName)
-	createClone(clonePvcName, snapName, scObj.Name)
-	By("Creating and deploying clone app pod", createDeployVerifyCloneApp)
+	createSnapshot(pvcNameBlock, snapNameBlock)
+	verifySnapshotCreated(snapNameBlock)
+	createClone(clonePvcNameBlock, snapNameBlock, scObj.Name)
+	By("Creating and deploying clone app pod", func() { createDeployVerifyCloneApp(cloneAppNameBlock, clonePvcNameBlock) })
 
 	By("Deleting clone and main application deployment")
-	deleteAppDeployment(cloneAppName)
-	deleteAppDeployment(appName)
+	deleteAppDeployment(cloneAppNameBlock)
+	deleteAppDeployment(appNameBlock)
 
 	By("Deleting snapshot, main pvc and clone pvc")
-	deletePVC(clonePvcName)
-	deleteSnapshot(pvcName, snapName)
-	deletePVC(pvcName)
+	deletePVC(clonePvcNameBlock)
+	deleteSnapshot(pvcNameBlock, snapNameBlock)
+	deletePVC(pvcNameBlock)
+
+	By("Deleting storage class", deleteStorageClass)
+}
+
+func blockVolDeletionTest() {
+	By("Creating default storage class", createStorageClass)
+	By("creating and verifying PVC bound status", func() { createAndVerifyPVC(pvcNameAplha) })
+
+	By("Creating and deploying app pod", func() { createDeployVerifyApp(appNameAlpha, pvcNameAplha) })
+	By("verifying ZFSVolume object", VerifyZFSVolume)
+
+	createSnapshot(pvcNameAplha, snapNameAlpha)
+	verifySnapshotCreated(snapNameAlpha)
+
+	By("Deleting main application deployment")
+	deleteAppDeployment(appNameAlpha)
+
+	By("Deleting main pvc")
+	deletePVC(pvcNameAplha)
+
+	By("Verifying ZFSVolume object after pvc deletion when snapshot is present", VerifyZFSVolume)
+
+	By("Creating clone from the snapshot")
+	createClone(clonePvcNameAlpha, snapNameAlpha, scObj.Name)
+	By("Creating and deploying clone app pod", func() { createDeployVerifyCloneApp(cloneAppNameAlpha, clonePvcNameAlpha) })
+
+	By("Deleting clone application deployment, clone pvc")
+	deleteAppDeployment(cloneAppNameAlpha)
+
+	deletePVC(clonePvcNameAlpha)
+	deleteSnapshot(pvcNameAplha, snapNameAlpha)
 
 	By("Deleting storage class", deleteStorageClass)
 }
@@ -109,4 +140,9 @@ func blockVolCreationTest() {
 func volumeCreationTest() {
 	By("Running volume creation test", fsVolCreationTest)
 	By("Running block volume creation test", blockVolCreationTest)
+
+}
+
+func volumeDeletionTest() {
+	By("Running volume deletion test", blockVolDeletionTest)
 }

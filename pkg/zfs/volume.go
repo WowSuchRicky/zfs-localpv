@@ -441,3 +441,12 @@ func IsVolumeReady(vol *apis.ZFSVolume) bool {
 
 	return false
 }
+
+// GetSnapshotForVolume fetches all the snapshots for the given volume
+func GetSnapshotForVolume(volumeID string) (*apis.ZFSSnapshotList, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: ZFSVolKey + "=" + volumeID,
+	}
+	snapList, err := snapbuilder.NewKubeclient().WithNamespace(OpenEBSNamespace).List(listOptions)
+	return snapList, err
+}

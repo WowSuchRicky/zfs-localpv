@@ -107,7 +107,7 @@ runTestSuite() {
 
   echo "running ginkgo test case with coverage ${coverageFile}"
 
-  if ! ginkgo -v -coverprofile="${coverageFile}" --label-filter="${labelFilter}" -covermode=atomic; then
+  if ! ginkgo -p -v -coverprofile="${coverageFile}" --label-filter="${labelFilter}" -covermode=atomic; then
 
   sudo zpool status
 

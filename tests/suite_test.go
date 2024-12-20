@@ -48,11 +48,33 @@ var (
 	PodClient      *pod.KubeClient
 	scName         = "zfspv-sc"
 	ZFSProvisioner = "zfs.csi.openebs.io"
-	pvcName        = "zfspv-pvc"
-	snapName       = "zfspv-snap"
-	appName        = "busybox-zfspv"
-	clonePvcName   = "zfspv-pvc-clone"
-	cloneAppName   = "busybox-zfspv-clone"
+
+	pvcName  = "zfspv-pvc-fs"
+	snapName = "zfspv-snap"
+	appName  = "busybox-zfspv"
+
+	clonePvcName = "zfspv-pvc-clone"
+	cloneAppName = "busybox-zfspv-clone"
+
+	pvcNameFS    = "zfspv-pvc-fs"
+	pvcNameBlock = "zfspv-pvc-block"
+	pvcNameAplha = "zfspv-pvc-alpha"
+
+	appNameFS    = "busybox-zfspv-fs"
+	appNameBlock = "busybox-zfspv-block"
+	appNameAlpha = "busybox-zfspv-alpha"
+
+	snapNameFS    = "zfspv-snap-fs"
+	snapNameBlock = "zfspv-snap-block"
+	snapNameAlpha = "zfspv-snap-alpha"
+
+	clonePvcNameFS    = "zfspv-pvc-clone-fs"
+	clonePvcNameBlock = "zfspv-pvc-clone-block"
+	clonePvcNameAlpha = "zfspv-pvc-clone-alpha"
+
+	cloneAppNameFS    = "busybox-zfspv-clone-fs"
+	cloneAppNameBlock = "busybox-zfspv-clone-block"
+	cloneAppNameAlpha = "busybox-zfspv-clone-alpha"
 
 	scObj              *storagev1.StorageClass
 	deployObj          *appsv1.Deployment
