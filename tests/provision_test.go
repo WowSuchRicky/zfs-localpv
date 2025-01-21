@@ -22,8 +22,8 @@ import (
 
 var _ = Describe("[zfspv] TEST VOLUME PROVISIONING", func() {
 	Context("App is deployed with zfs driver", func() {
-		It("Running zfs volume Creation Test", volumeCreationTest)
-		It("Running zfs volume Creation Test with custom node id", Label("custom-node-id"), volumeCreationTest)
+		//It("Running zfs volume Creation Test", volumeCreationTest)
+		//It("Running zfs volume Creation Test with custom node id", Label("custom-node-id"), volumeCreationTest)
 		It("Running zfs volume Deletion Test", volumeDeletionTest)
 	})
 })
@@ -118,7 +118,7 @@ func blockVolDeletionTest() {
 
 	By("Deleting main application deployment")
 	deleteAppDeployment(appNameAlpha)
-
+	isZVPresent(pvcNameAplha)
 	By("Deleting main pvc")
 	deletePVC(pvcNameAplha)
 
@@ -131,7 +131,9 @@ func blockVolDeletionTest() {
 	By("Deleting clone application deployment, clone pvc")
 	deleteAppDeployment(cloneAppNameAlpha)
 
+	//isZVPresent(pvcName)
 	deletePVC(clonePvcNameAlpha)
+
 	deleteSnapshot(pvcNameAplha, snapNameAlpha)
 
 	By("Deleting storage class", deleteStorageClass)

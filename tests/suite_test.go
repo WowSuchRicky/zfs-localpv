@@ -22,11 +22,13 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
 	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
 	"github.com/openebs/zfs-localpv/tests/deploy"
 	"github.com/openebs/zfs-localpv/tests/pod"
 	"github.com/openebs/zfs-localpv/tests/pvc"
 	"github.com/openebs/zfs-localpv/tests/sc"
+	"github.com/openebs/zfs-localpv/tests/zv"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -46,6 +48,7 @@ var (
 	PVCClient      *pvc.Kubeclient
 	DeployClient   *deploy.Kubeclient
 	PodClient      *pod.KubeClient
+	ZVClient       *zv.Kubeclient
 	scName         = "zfspv-sc"
 	ZFSProvisioner = "zfs.csi.openebs.io"
 
@@ -79,6 +82,7 @@ var (
 	scObj              *storagev1.StorageClass
 	deployObj          *appsv1.Deployment
 	pvcObj             *corev1.PersistentVolumeClaim
+	zvObj              *apis.ZFSVolume
 	appPod             *corev1.PodList
 	accessModes        = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
 	capacity           = "5368709120" // 5Gi
@@ -100,6 +104,7 @@ func init() {
 	DeployClient = deploy.NewKubeClient(deploy.WithKubeConfigPath(KubeConfigPath))
 	PodClient = pod.NewKubeClient(pod.WithKubeConfigPath(KubeConfigPath))
 	ZFSClient = volbuilder.NewKubeclient(volbuilder.WithKubeConfigPath(KubeConfigPath))
+	ZVClient = zv.NewKubeClient(zv.WithKubeConfigPath(KubeConfigPath))
 }
 
 func TestSource(t *testing.T) {

@@ -682,3 +682,31 @@ func getStoragClassParams() []map[string]string {
 		},
 	}
 }
+
+func isZVPresent(pvcName string) {
+	var (
+		err error
+	)
+
+	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcName, metav1.GetOptions{})
+	fmt.Printf("  \n  PVCClient   %+v\n", PVCClient)
+	fmt.Printf("  \n  ZVClient   %+v\n", ZVClient)
+	zvName := pvcObj.Spec.VolumeName
+	fmt.Printf("  \n  Sinha  zvName %+v\n", zvName)
+
+	// zvObj, err = zv.NewBuilder().
+	// 	WithName(pvcName).
+	// 	WithNamespace(OpenEBSNamespace).
+	// 	WithStorageClass(scObj.Name).
+	// 	Build()
+
+	zvObj, err = ZVClient.WithNamespace(OpenEBSNamespace).Get(zvName, metav1.GetOptions{})
+	fmt.Printf("  \n  ZVClient   %+v\n", zvObj)
+
+	gomega.Expect(err).To(
+		gomega.BeNil(),
+		"while fetching zv {%s} in namespace {%s}",
+		zvName,
+		OpenEBSNamespace,
+	)
+}
